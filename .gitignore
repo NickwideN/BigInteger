@@ -30,3 +30,4 @@
 *.exe
 *.out
 *.app
+.vs/BigInteger/v15/Browse.VC.opendb
