@@ -2,12 +2,69 @@
 #include<iomanip>
 #include"BigInteger.h"
 
+/*
+    // M   Addition
+using namespace std;
+int main() {
+    BigInteger a, b;
+    cin >> a;
+    cin >> b;
+    cout << a + b;
+    getchar();
+    getchar();
+    return 0;
+}
+*/
+
+/*
+    // N  Substraction
+using namespace std;
+int main() {
+    BigInteger a, b;
+    cin >> a;
+    cin >> b;
+    cout << a - b;
+    getchar();
+    getchar();
+    return 0;
+}
+*/
+
+/*
+// O  Maltiplication
+using namespace std;
+int main() {
+    BigInteger a, b;
+    cin >> a;
+    cin >> b;
+    cout << a * b;
+    getchar();
+    getchar();
+    return 0;
+}
+*/
+// P  Division
+using namespace std;
+int main() {
+    BigInteger a, b;
+    cin >> a;
+    cin >> b;
+    BigInteger c = a / b;
+    cout << c << " " << a - b * c;
+    getchar();
+    getchar();
+    return 0;
+}
+
+
+/*
 using namespace std;
 int main() {
     BigInteger a = 987654321;
     BigInteger b = 987654321;
     for (;;) {
         cin >> a;
+        cin.clear();
         cout << a;
     }
     a++;
@@ -15,12 +72,14 @@ int main() {
     getchar();
     return 0;
 }
+*/
 
 
 
 
 
-/*
+
+/*    // old check
 int main() {
     BigInteger a = "-1234561234";
     BigInteger b;

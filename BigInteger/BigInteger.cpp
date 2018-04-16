@@ -1,9 +1,7 @@
 #include "BigInteger.h"
-#include <cstring>
-#include <stdlib.h>
-#include <string>
 #include <iostream>
-#include <iomanip>
+#include <iomanip>  // setw, setfill
+#include <cstring>  // strlen
 //------------------------------------------------------------------
 //      Privite friend functions:
 BigInteger & Addition(BigInteger & left_value, const BigInteger & right_value) {  
@@ -17,7 +15,7 @@ BigInteger & Addition(BigInteger & left_value, const BigInteger & right_value) {
                 throw BigInteger::BigIntegerOverflow();
             }
             left_value.digits[i] -= BigInteger::BASE;
-            left_value.digits[i + 1] += 1;
+            ++left_value.digits[i + 1];
         }
     }
     left_value.len = (left_value.digits[new_value_len] ? new_value_len + 1 : new_value_len);
@@ -40,13 +38,16 @@ BigInteger & Substraction(BigInteger & left_value, const BigInteger & right_valu
             --left_value.len;
         }
     }
+    if (!left_value.len) {
+        ++left_value.len;
+    }
     return left_value;
 }
 
 BigInteger Multiplication(const BigInteger & left_value, const BigInteger & right_value) { 
                                                             // similar operator *= (left_value *= right_value)
                                                             // take left_value and right_value only as pozitive
-    if (left_value.len + right_value.len > BigInteger::MAX_LEN_BASE) {
+    if (left_value.len + right_value.len - 1 > BigInteger::MAX_LEN_BASE) {
         throw BigInteger::BigIntegerOverflow();
     }
     BigInteger new_value;
@@ -62,15 +63,16 @@ BigInteger Multiplication(const BigInteger & left_value, const BigInteger & righ
     }
     BigInteger::long_digit_t tmp_digit = (BigInteger::long_digit_t)left_value.digits[left_value.len - 1] * right_value.digits[right_value.len - 1] + new_value.digits[left_value.len + right_value.len -2];
     new_value.digits[left_value.len + right_value.len - 2] = tmp_digit % BigInteger::BASE;
-    if (left_value.len + right_value.len + 1 > BigInteger::MAX_LEN_BASE && tmp_digit / BigInteger::BASE) {
+    if (left_value.len + right_value.len > BigInteger::MAX_LEN_BASE && tmp_digit / BigInteger::BASE) {
         throw BigInteger::BigIntegerOverflow();
     }
     new_value.digits[left_value.len + right_value.len - 1] += tmp_digit / BigInteger::BASE;
 
-    new_value.len = left_value.len + right_value.len + 1;
-    while (!new_value.digits[new_value.len - 1]) {
+    new_value.len = left_value.len + right_value.len;
+    while (!new_value.digits[new_value.len - 1] && new_value.len != 1) {
         --new_value.len;
     }
+
     return new_value;
 }
 
@@ -86,12 +88,91 @@ bool Is_abs_left_value_Fewer_abs_right_value(const BigInteger & left_value, cons
         return false;
     }
 }
+
+inline BigInteger & prev_for_div(BigInteger ** right_mul_bin_pnt, const int & i, const int & j, const int & right_mul_bin_cap) {
+    if (!j) {
+        return right_mul_bin_pnt[i - 1][right_mul_bin_cap - 1];
+    }
+    else {
+        return right_mul_bin_pnt[i][j - 1];
+    }
+}
+
+BigInteger ** binary_search_div_with_create(BigInteger ** right_mul_bin_pnt, int & right_mul_bin_pnt_cap, const int & right_mul_bin_cap, int & right_mul_bin_pnt_num,
+    int & right_mul_bin_num, const BigInteger & left_value, const BigInteger & right_value, BigInteger & result) {
+    for (int i = 0;; ++i) {
+        if (i == right_mul_bin_pnt_cap) {
+            BigInteger ** tmp_right_mul_bin_pnt = new BigInteger*[right_mul_bin_pnt_cap * 2];
+            for (int i = 0; i < right_mul_bin_pnt_cap; ++i) {
+                tmp_right_mul_bin_pnt[i] = right_mul_bin_pnt[i];
+            }
+            delete[] right_mul_bin_pnt;
+            right_mul_bin_pnt_cap *= 2;
+            right_mul_bin_pnt = tmp_right_mul_bin_pnt;
+        }
+        if (i == right_mul_bin_pnt_num) {
+            right_mul_bin_pnt[i] = new BigInteger[right_mul_bin_cap];
+            ++right_mul_bin_pnt_num;
+        }
+        for (int j = 0; j < right_mul_bin_cap; ++j) {
+            if (i * right_mul_bin_cap + j == right_mul_bin_num) {
+                right_mul_bin_pnt[i][j] = prev_for_div(right_mul_bin_pnt, i, j, right_mul_bin_cap) * 2;
+                ++right_mul_bin_num;
+            }
+            if ((right_mul_bin_pnt[i][j] + result) * right_value >= left_value) {
+                if (!(i + j)) {
+                    if ((result + 1) * right_value == left_value) {
+                        ++result;
+                    }
+                    goto end_of_function;
+                }
+                result += prev_for_div(right_mul_bin_pnt, i, j, right_mul_bin_cap);
+                goto end_of_function;
+            }
+        }
+    }
+end_of_function:
+    return right_mul_bin_pnt;
+}
+
+void binary_search_div_without_create(BigInteger ** right_mul_bin_pnt, int & right_mul_bin_pnt_cap, const int & right_mul_bin_cap, int & right_mul_bin_pnt_num,
+    int & right_mul_bin_num, const BigInteger & left_value, const BigInteger & right_value, BigInteger & result) {
+    for (int i = 0;; ++i) {
+        for (int j = 0; j < right_mul_bin_cap; ++j) {
+            if ((right_mul_bin_pnt[i][j] + result) * right_value >= left_value) {
+                if (!(i + j)) {
+                    if ((result + 1) * right_value == left_value) {
+                        ++result;
+                    }
+                    goto end_of_function;
+                }
+                result += prev_for_div(right_mul_bin_pnt, i, j, right_mul_bin_cap);
+                binary_search_div_without_create(right_mul_bin_pnt, right_mul_bin_pnt_cap, right_mul_bin_cap, right_mul_bin_pnt_num,
+                    right_mul_bin_num, left_value, right_value, result);
+                goto end_of_function;
+            }
+        }
+    }
+end_of_function:
+    {
+
+    }
+}
+
+BigInteger ** binary_search_div(BigInteger ** right_mul_bin_pnt, int & right_mul_bin_pnt_cap, const int & right_mul_bin_cap, int & right_mul_bin_pnt_num,
+    int & right_mul_bin_num, const BigInteger & left_value, const BigInteger & right_value, BigInteger & result) {
+    right_mul_bin_pnt = binary_search_div_with_create(right_mul_bin_pnt, right_mul_bin_pnt_cap, right_mul_bin_cap, right_mul_bin_pnt_num,
+        right_mul_bin_num, left_value, right_value, result);
+    binary_search_div_without_create(right_mul_bin_pnt, right_mul_bin_pnt_cap, right_mul_bin_cap, right_mul_bin_pnt_num,
+        right_mul_bin_num, left_value, right_value, result);
+    return right_mul_bin_pnt;
+}
 //------------------------------------------------------------------
 
 //------------------------------------------------------------------
 //Constructors:
 BigInteger::BigInteger() {
-    len = 0;
+    len = 1;
     minus = false;
     for (int i = 0; i < MAX_LEN_BASE; ++i) {
         digits[i] = default_value;
@@ -205,25 +286,45 @@ BigInteger & BigInteger::operator *= (const BigInteger & right_value) {
     return *this;
 }
 
-BigInteger & operator % (const BigInteger & left_value, const BigInteger & right_value) {   // dodn't have
-    BigInteger a;
-    return a;
+BigInteger operator % (const BigInteger & left_value, const BigInteger & right_value) {   
+    BigInteger result_of_division = left_value / right_value;
+    return left_value - right_value * result_of_division;
 }
 
-BigInteger & BigInteger::operator %= (const BigInteger & right_value) {             // dodn't have
-    BigInteger a;
-    return a;
-
+BigInteger & BigInteger::operator %= (const BigInteger & right_value) {
+    *this = *this % right_value;
+    return *this;
 }
 
-BigInteger & operator / (const BigInteger & left_value, const BigInteger & right_value) {   // dodn't have
-    BigInteger a;
-    return a;
+BigInteger operator / (const BigInteger & left_value, const BigInteger & right_value) {   // binary search
+    if (!right_value) {
+        throw BigInteger::BigIntegerDivisionByZero();
+    }
+    BigInteger new_value = 0;
+                                            // right_mul_bin -- array of rusults of multiplication of right_value by exponent of two
+    const int right_mul_bin_cap = 100;        // capacity of right_mul_bin
+    int right_mul_bin_pnt_cap = 500;          // capacypy of array of pointers to (right_mul_bin)s
+    BigInteger ** right_mul_bin_pnt = new BigInteger*[right_mul_bin_pnt_cap];   // array of pointers to (right_mul_bin)s
+    right_mul_bin_pnt[0] = new BigInteger[right_mul_bin_cap];
+    right_mul_bin_pnt[0][0] = 1;
+    int right_mul_bin_num = 1;              // number of rusults of multiplication of right_value by exponent of two
+    int right_mul_bin_pnt_num = 1;
+    right_mul_bin_pnt = binary_search_div(right_mul_bin_pnt, right_mul_bin_pnt_cap, right_mul_bin_cap, right_mul_bin_pnt_num, 
+        right_mul_bin_num, left_value, right_value, new_value);
+    for (int i = 0; i < right_mul_bin_pnt_num; ++i) {
+        delete[] right_mul_bin_pnt[i];
+    }
+    delete[] right_mul_bin_pnt;
+    new_value.minus = left_value.minus ^ right_value.minus;
+    if (!new_value.len) {
+        ++new_value.len;
+    }
+    return new_value;
 }
 
-BigInteger & BigInteger::operator /= (const BigInteger & right_value) {             // dodn't have
-    BigInteger a;
-    return a;
+BigInteger & BigInteger::operator /= (const BigInteger & right_value) {             
+    *this = *this / right_value;
+    return *this;
 }
 
 BigInteger operator ^ (const BigInteger & value, const int & exponent) {
@@ -375,41 +476,37 @@ std::ostream & operator << (std::ostream & os, const BigInteger & value) {
     return os;
 }
 
-std::istream & operator >> (std::istream & is, BigInteger & value) {
-    char value_cstr[BigInteger::MAX_LEN];
-    is >> value_cstr;
-    value = value_cstr;
+std::istream & operator >> (std::istream & is, BigInteger & value) { 
+    char value_cstr[BigInteger::MAX_LEN + 2];
+    int curr_index = 0;
+    char ch;
+    is >> ch;
+    if (ch == '-') {
+        value_cstr[curr_index] = ch;
+        ++curr_index;
+    } else {
+        is.putback(ch);
+    }
+    for (; curr_index < BigInteger::MAX_LEN + 1 && is.get(ch); ++curr_index) {
+        if (isdigit(ch)) {
+            value_cstr[curr_index] = ch;
+        } else if (isspace(ch)) {
+            break;
+        } else {
+            is.clear(std::ios_base::failbit);
+            break;
+        }
+    }
+    if (is) {
+        if ((curr_index < BigInteger::MAX_LEN + 1 && value_cstr[0] != '-') || (curr_index < BigInteger::MAX_LEN + 2 && value_cstr[0] == '-')) {
+            value_cstr[curr_index] = 0;
+            value = value_cstr;
+        } else {
+            throw BigInteger::BigIntegerOverflow();
+        }
+    }
     return is;
 }
-
-/*
-std::istream & operator >> (std::istream & is, BigInteger & value) { /////////////////////////////////////////////////////
-    if (is.good()) {
-        char c = is.get();
-        is.putback(c);
-    }
-    char value_cstr[BigInteger::MAX_LEN + 1];
-    int curr_index = 0;
-    if (is.peek() == '-') {
-        value_cstr[curr_index] = is.get();
-        ++curr_index;
-    }
-    for (; curr_index < BigInteger::MAX_LEN + 1 && !isspace(is.peek()); ++curr_index) {
-        char curr_char = is.get();
-        if (isdigit(curr_char)) {
-            value_cstr[curr_index] = curr_char;
-        }
-        else {
-            throw BigInteger::BigIntegerError();
-        }
-    }
-    if (isdigit(is.peek())) {
-        throw BigInteger::BigIntegerOverflow();
-    }
-    value_cstr[curr_index] = 0;
-    value = value_cstr;
-    return is;
-}*/
 
 BigInteger::operator bool() const {
     return len - 1 || digits[0];
