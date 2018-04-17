@@ -99,7 +99,7 @@ inline BigInteger & prev_for_div(BigInteger ** right_mul_bin_pnt, const int & i,
 }
 
 BigInteger ** binary_search_div_with_create(BigInteger ** right_mul_bin_pnt, int & right_mul_bin_pnt_cap, const int & right_mul_bin_cap, int & right_mul_bin_pnt_num,
-    int & right_mul_bin_num, const BigInteger & left_value, const BigInteger & right_value, BigInteger & result) {
+    int & right_mul_bin_num, const BigInteger & left_value, const BigInteger & right_value, BigInteger & prev_value, BigInteger & result) {
     for (int i = 0;; ++i) {
         if (i == right_mul_bin_pnt_cap) {
             BigInteger ** tmp_right_mul_bin_pnt = new BigInteger*[right_mul_bin_pnt_cap * 2];
@@ -119,14 +119,12 @@ BigInteger ** binary_search_div_with_create(BigInteger ** right_mul_bin_pnt, int
                 right_mul_bin_pnt[i][j] = prev_for_div(right_mul_bin_pnt, i, j, right_mul_bin_cap) * 2;
                 ++right_mul_bin_num;
             }
-            if ((right_mul_bin_pnt[i][j] + result) * right_value >= left_value) {
+            if (right_mul_bin_pnt[i][j] + prev_value >= left_value) {
                 if (!(i + j)) {
-                    if ((result + 1) * right_value == left_value) {
-                        ++result;
-                    }
                     goto end_of_function;
                 }
-                result += prev_for_div(right_mul_bin_pnt, i, j, right_mul_bin_cap);
+                prev_value += prev_for_div(right_mul_bin_pnt, i, j, right_mul_bin_cap);
+                result += powers_of_two(i * right_mul_bin_pnt_num + j - 1);
                 goto end_of_function;
             }
         }
@@ -136,19 +134,16 @@ end_of_function:
 }
 
 void binary_search_div_without_create(BigInteger ** right_mul_bin_pnt, int & right_mul_bin_pnt_cap, const int & right_mul_bin_cap, int & right_mul_bin_pnt_num,
-    int & right_mul_bin_num, const BigInteger & left_value, const BigInteger & right_value, BigInteger & result) {
+    int & right_mul_bin_num, const BigInteger & left_value, const BigInteger & right_value,  BigInteger & prev_value, BigInteger & result) {
     for (int i = 0;; ++i) {
         for (int j = 0; j < right_mul_bin_cap; ++j) {
-            if ((right_mul_bin_pnt[i][j] + result) * right_value >= left_value) {
+            if ((right_mul_bin_pnt[i][j] + prev_value) * right_value >= left_value) {
                 if (!(i + j)) {
-                    if ((result + 1) * right_value == left_value) {
-                        ++result;
-                    }
                     goto end_of_function;
                 }
-                result += prev_for_div(right_mul_bin_pnt, i, j, right_mul_bin_cap);
+                prev_value += prev_for_div(right_mul_bin_pnt, i, j, right_mul_bin_cap);
                 binary_search_div_without_create(right_mul_bin_pnt, right_mul_bin_pnt_cap, right_mul_bin_cap, right_mul_bin_pnt_num,
-                    right_mul_bin_num, left_value, right_value, result);
+                    right_mul_bin_num, left_value, right_value, prev_value, result);
                 goto end_of_function;
             }
         }
@@ -161,10 +156,11 @@ end_of_function:
 
 BigInteger ** binary_search_div(BigInteger ** right_mul_bin_pnt, int & right_mul_bin_pnt_cap, const int & right_mul_bin_cap, int & right_mul_bin_pnt_num,
     int & right_mul_bin_num, const BigInteger & left_value, const BigInteger & right_value, BigInteger & result) {
+    BigInteger prev_value = 0;
     right_mul_bin_pnt = binary_search_div_with_create(right_mul_bin_pnt, right_mul_bin_pnt_cap, right_mul_bin_cap, right_mul_bin_pnt_num,
-        right_mul_bin_num, left_value, right_value, result);
+        right_mul_bin_num, left_value, right_value, prev_value, result);
     binary_search_div_without_create(right_mul_bin_pnt, right_mul_bin_pnt_cap, right_mul_bin_cap, right_mul_bin_pnt_num,
-        right_mul_bin_num, left_value, right_value, result);
+        right_mul_bin_num, left_value, right_value, prev_value, result);
     return right_mul_bin_pnt;
 }
 //------------------------------------------------------------------
@@ -287,8 +283,8 @@ BigInteger & BigInteger::operator *= (const BigInteger & right_value) {
 }
 
 BigInteger operator % (const BigInteger & left_value, const BigInteger & right_value) {   
-    BigInteger result_of_division = left_value / right_value;
-    return left_value - right_value * result_of_division;
+    BigInteger prev_value_of_division = left_value / right_value;
+    return left_value - right_value * prev_value_of_division;
 }
 
 BigInteger & BigInteger::operator %= (const BigInteger & right_value) {
@@ -301,12 +297,12 @@ BigInteger operator / (const BigInteger & left_value, const BigInteger & right_v
         throw BigInteger::BigIntegerDivisionByZero();
     }
     BigInteger new_value = 0;
-                                            // right_mul_bin -- array of rusults of multiplication of right_value by exponent of two
+                                              // right_mul_bin -- array of rusults of multiplication of right_value by exponent of two
     const int right_mul_bin_cap = 100;        // capacity of right_mul_bin
     int right_mul_bin_pnt_cap = 500;          // capacypy of array of pointers to (right_mul_bin)s
     BigInteger ** right_mul_bin_pnt = new BigInteger*[right_mul_bin_pnt_cap];   // array of pointers to (right_mul_bin)s
     right_mul_bin_pnt[0] = new BigInteger[right_mul_bin_cap];
-    right_mul_bin_pnt[0][0] = 1;
+    right_mul_bin_pnt[0][0] = right_value;
     int right_mul_bin_num = 1;              // number of rusults of multiplication of right_value by exponent of two
     int right_mul_bin_pnt_num = 1;
     right_mul_bin_pnt = binary_search_div(right_mul_bin_pnt, right_mul_bin_pnt_cap, right_mul_bin_cap, right_mul_bin_pnt_num, 
